@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -430,44 +429,125 @@
     </footer>
 
     <script>
-        // Load protected JavaScript
-        (function() {
-            fetch('/api/protected-js')
-                .then(response => response.json())
-                .then(data => {
-                    // Decode and execute protected code
-                    const decoded = atob(data.code.split('').reverse().join(''));
-                    const script = document.createElement('script');
-                    script.textContent = decoded;
-                    document.body.appendChild(script);
-                })
-                .catch(error => console.error('Error loading protected code:', error));
-        })();
-
+    // Simple, working JavaScript implementation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tabs
+        initializeTabs();
+        
         // Load Flutter code samples
-        function loadFlutterCode() {
-            const codeTypes = ['consent_granted', 'consent_denied', 'runtime_consent', 'conversion_studio_config'];
-            
-            codeTypes.forEach(type => {
-                fetch(`/api/get-flutter-code/${type}`)
-                    .then(response => response.json())
+        loadFlutterCodeSamples();
+        
+        // Initialize simulator
+        resetSimulator();
+    });
+
+    function initializeTabs() {
+        // Add click handlers to all tab buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                switchTab(tabId);
+            });
+        });
+    }
+
+    function switchTab(tabId) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+        });
+        
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active');
+        });
+        
+        // Show selected tab
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+        }
+        
+        // Add active class to selected button
+        const selectedButton = document.querySelector(`[data-tab="${tabId}"]`);
+        if (selectedButton) {
+            selectedButton.classList.add('active');
+        }
+    }
+
+    // Load Flutter code samples with better error handling
+    function loadFlutterCodeSamples() {
+        // Map of code types to their element IDs
+        const codeMapping = {
+            'consent_granted': 'flutter-consent-granted',
+            'consent_denied': 'flutter-consent-denied', 
+            'runtime_consent': 'flutter-runtime-consent',
+            'conversion_studio_config': 'flutter-config'
+        };
+        
+        Object.entries(codeMapping).forEach(([codeType, elementId]) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                // Set loading text
+                element.textContent = 'Loading...';
+                
+                fetch(`/api/get-flutter-code/${codeType}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
-                        const element = document.getElementById(`flutter-${type.replace('_', '-')}`);
-                        if (element && data.success) {
+                        if (data.success && data.code) {
                             element.textContent = data.code;
+                        } else {
+                            element.textContent = '// Code sample not available';
                         }
                     })
-                    .catch(error => console.error(`Error loading ${type}:`, error));
-            });
-        }
+                    .catch(error => {
+                        console.error(`Error loading ${codeType}:`, error);
+                        element.textContent = '// Error loading code sample';
+                    });
+            }
+        });
+    }
 
-        // Copy Flutter code to clipboard
-        function copyFlutterCode(codeType) {
-            fetch(`/api/get-flutter-code/${codeType}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        navigator.clipboard.writeText(data.code).then(() => {
+    // Simulator variables
+    let currentConversionValue = 0;
+
+    function simulateEvent(eventName, value) {
+        currentConversionValue = Math.min(63, currentConversionValue + value);
+        updateConversionDisplay();
+    }
+
+    function resetSimulator() {
+        currentConversionValue = 0;
+        updateConversionDisplay();
+    }
+
+    function updateConversionDisplay() {
+        const display = document.getElementById('conversion-value-display');
+        if (display) {
+            display.textContent = currentConversionValue;
+            display.className = 'conversion-value-' + Math.floor(currentConversionValue / 10);
+        }
+    }
+
+    // Copy Flutter code function
+    function copyFlutterCode(codeType) {
+        fetch(`/api/get-flutter-code/${codeType}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch code');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.code) {
+                    navigator.clipboard.writeText(data.code)
+                        .then(() => {
+                            // Find the button that was clicked
                             const button = event.target;
                             const originalText = button.textContent;
                             button.textContent = '✓ Copied!';
@@ -477,49 +557,20 @@
                                 button.textContent = originalText;
                                 button.classList.remove('copied');
                             }, 2000);
+                        })
+                        .catch(err => {
+                            console.error('Failed to copy:', err);
+                            alert('Failed to copy code. Please try selecting and copying manually.');
                         });
-                    }
-                })
-                .catch(error => console.error('Error copying code:', error));
-        }
-
-        // Simulator functions
-        function simulateEvent(eventName, value) {
-            fetch('/api/simulate-conversion', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    events: [eventName],
-                    revenue: value * 5 // Simple revenue calculation
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (window.ConversionSimulator) {
-                    window.ConversionSimulator.addEvent(eventName, value);
                 } else {
-                    // Fallback display update
-                    const display = document.getElementById('conversion-value-display');
-                    if (display) {
-                        display.textContent = data.conversion_value;
-                    }
+                    alert('Code not available');
                 }
             })
-            .catch(error => console.error('Error simulating event:', error));
-        }
-
-        function resetSimulator() {
-            if (window.ConversionSimulator) {
-                window.ConversionSimulator.reset();
-            } else {
-                document.getElementById('conversion-value-display').textContent = '0';
-            }
-        }
-
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadFlutterCode();
-        });
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load code');
+            });
+    }
     </script>
 </body>
 </html>
