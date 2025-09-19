@@ -1,0 +1,92 @@
+# render.yaml
+# Save this file in the root directory (skan-flask-app/render.yaml)
+services:
+  - type: web
+    name: skan-demo
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 4 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+---
+
+# requirements.txt
+# Save this file in the root directory (skan-flask-app/requirements.txt)
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-Compress==1.14
+gunicorn==21.2.0
+python-dotenv==1.0.0
+
+---
+
+# .gitignore
+# Save this file in the root directory (skan-flask-app/.gitignore)
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Flask
+instance/
+.webassets-cache
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+---
+
+# runtime.txt
+# Save this file in the root directory (skan-flask-app/runtime.txt)
+python-3.11.5
+
+---
+
+# Procfile
+# Save this file in the root directory (skan-flask-app/Procfile)
+web: gunicorn app:app --workers 4 --bind 0.0.0.0:$PORT
+
+---
+
+# .env.example
+# Save this file in the root directory (skan-flask-app/.env.example)
+# Note: Don't commit the actual .env file, only this example
+SECRET_KEY=your-secret-key-here-generate-with-secrets-token-hex-32
+FLASK_ENV=production
+FLASK_DEBUG=False
