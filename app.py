@@ -373,99 +373,92 @@ def get_flutter_code(code_type):
         })
     return jsonify({'success': False, 'error': 'Code sample not found'}), 404
 
+@app.errorhandler(404)
+def not_found(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'API endpoint not found'}), 404
+    return jsonify({'error': 'Not found'}), 404
+
 @app.route('/api/protected-js')
 def get_protected_js():
-    """Serve obfuscated JavaScript code"""
-    if 'session_key' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    # This would contain your interactive JavaScript logic
+    """Serve JavaScript code directly without obfuscation for now"""
+    # Return the JavaScript directly to ensure it works
     js_code = """
-    // Protected interactive elements code
-    (function() {
-        'use strict';
-        
-        // Conversion value simulator
-        window.ConversionSimulator = {
-            currentValue: 0,
-            events: [],
-            
-            addEvent: function(eventName, value) {
-                this.events.push({name: eventName, value: value, time: Date.now()});
-                this.updateConversionValue();
-            },
-            
-            updateConversionValue: function() {
-                let total = 0;
-                this.events.forEach(e => total += e.value);
-                this.currentValue = Math.min(63, total); // SKAN 4.0 limit
-                this.updateDisplay();
-            },
-            
-            updateDisplay: function() {
-                const display = document.getElementById('conversion-value-display');
-                if (display) {
-                    display.textContent = this.currentValue;
-                    display.className = 'conversion-value-' + Math.floor(this.currentValue / 10);
-                }
-            },
-            
-            reset: function() {
-                this.currentValue = 0;
-                this.events = [];
-                this.updateDisplay();
-            }
-        };
-        
-        // Tab switching functionality
-        window.TabManager = {
-            init: function() {
-                document.querySelectorAll('.tab-button').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const tabId = this.dataset.tab;
-                        TabManager.switchTab(tabId);
-                    });
-                });
-            },
-            
-            switchTab: function(tabId) {
-                // Hide all tabs
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    tab.style.display = 'none';
-                });
-                
-                // Remove active class from all buttons
-                document.querySelectorAll('.tab-button').forEach(button => {
-                    button.classList.remove('active');
-                });
-                
-                // Show selected tab
-                const selectedTab = document.getElementById(tabId);
-                if (selectedTab) {
-                    selectedTab.style.display = 'block';
-                }
-                
-                // Add active class to selected button
-                const selectedButton = document.querySelector(`[data-tab="${tabId}"]`);
-                if (selectedButton) {
-                    selectedButton.classList.add('active');
-                }
-            }
-        };
-        
-        // Initialize on DOM ready
-        document.addEventListener('DOMContentLoaded', function() {
-            TabManager.init();
-            ConversionSimulator.reset();
+    // Tab switching functionality
+    function switchTab(tabId) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
         });
-    })();
+        
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active');
+        });
+        
+        // Show selected tab
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+        }
+        
+        // Add active class to selected button
+        const selectedButton = document.querySelector('[data-tab="' + tabId + '"]');
+        if (selectedButton) {
+            selectedButton.classList.add('active');
+        }
+    }
+    
+    // Initialize tabs
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add click handlers to all tab buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                switchTab(tabId);
+            });
+        });
+        
+        // Initialize simulator if it exists
+        if (window.ConversionSimulator) {
+            window.ConversionSimulator.reset();
+        }
+    });
+    
+    // Conversion value simulator
+    window.ConversionSimulator = {
+        currentValue: 0,
+        events: [],
+        
+        addEvent: function(eventName, value) {
+            this.events.push({name: eventName, value: value, time: Date.now()});
+            this.updateConversionValue();
+        },
+        
+        updateConversionValue: function() {
+            let total = 0;
+            this.events.forEach(e => total += e.value);
+            this.currentValue = Math.min(63, total);
+            this.updateDisplay();
+        },
+        
+        updateDisplay: function() {
+            const display = document.getElementById('conversion-value-display');
+            if (display) {
+                display.textContent = this.currentValue;
+                display.className = 'conversion-value-' + Math.floor(this.currentValue / 10);
+            }
+        },
+        
+        reset: function() {
+            this.currentValue = 0;
+            this.events = [];
+            this.updateDisplay();
+        }
+    };
     """
     
-    # Return obfuscated code
-    return jsonify({
-        'code': CodeProtector.obfuscate(js_code),
-        'key': session['session_key']
-    })
+    return js_code, 200, {'Content-Type': 'application/javascript'}
 
 @app.route('/api/simulate-conversion', methods=['POST'])
 def simulate_conversion():
